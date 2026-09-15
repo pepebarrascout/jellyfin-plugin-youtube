@@ -1,18 +1,8 @@
-# Build artifacts
 bin/
 obj/
-dist/*.dll
-dist/*.zip
-
-# IDE
+*.user
 .vs/
 .vscode/
-.idea/
-*.user
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
+release_build/
+*.zip
+!jellyfin-plugin-youtube_*.zip

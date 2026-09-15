@@ -4,57 +4,28 @@
     <TargetFramework>net9.0</TargetFramework>
     <RootNamespace>Jellyfin.Plugin.YouTube</RootNamespace>
     <AssemblyName>Jellyfin.Plugin.YouTube</AssemblyName>
-    <Version>0.0.0.1</Version>
+    <AssemblyVersion>0.0.0.1</AssemblyVersion>
     <FileVersion>0.0.0.1</FileVersion>
-    <InformationalVersion>0.0.0.1</InformationalVersion>
-    <Authors>pepebarrascout</Authors>
-    <Company>pepebarrascout</Company>
-    <Product>Jellyfin YouTube Plugin</Product>
-    <Description>Stream YouTube videos as Jellyfin Series without downloading them</Description>
-    <Copyright>MIT</Copyright>
+    <Version>0.0.0.1</Version>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <LangVersion>latest</LangVersion>
-    <GenerateDocumentationFile>false</GenerateDocumentationFile>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <EnableNETAnalyzers>false</EnableNETAnalyzers>
-    <DebugType>portable</DebugType>
-    <DebugSymbols>true</DebugSymbols>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
   </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Jellyfin.Data" Version="10.*-*" />
-    <PackageReference Include="Jellyfin.Controller" Version="10.*-*" />
-    <PackageReference Include="Jellyfin.Common" Version="10.*-*" />
-    <PackageReference Include="Jellyfin.Model" Version="10.*-*" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.*" />
-    <PackageReference Include="Google.Apis.YouTube.v3" Version="1.68.*" />
-    <PackageReference Include="Quartz" Version="3.13.*" />
-    <PackageReference Include="Polly" Version="8.*" />
-    <PackageReference Include="Microsoft.Extensions.Http" Version="9.*" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.*" />
-  </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="Web\**\*" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="web\**\*">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="bin\**" />
-    <None Remove="obj\**" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Remove="bin\**" />
-    <Compile Remove="obj\**" />
-    <EmbeddedResource Remove="bin\**" />
-    <EmbeddedResource Remove="obj\**" />
+    <PackageReference Include="Jellyfin.Controller" Version="10.11.*" />
+    <PackageReference Include="Jellyfin.Model" Version="10.11.*" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.*" />
+    <PackageReference Include="Google.Apis.YouTube.v3" Version="1.68.*" />
+    <PackageReference Include="Quartz" Version="3.13.*" />
+    <PackageReference Include="Polly" Version="8.*" />
   </ItemGroup>
 
 </Project>

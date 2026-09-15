@@ -1,19 +1,19 @@
 [
   {
     "guid": "a8c3b2e1-7f4d-4e6a-9b1c-2d5e8f0a1b3c",
-    "name": "YouTube Streaming",
-    "description": "Stream YouTube videos as Jellyfin Series without downloading them. Uses .strm files + local stream proxy + yt-dlp.",
-    "overview": "Add YouTube channels and stream their videos directly as Series in Jellyfin.",
+    "name": "Jellyfin YouTube Plugin",
+    "description": "Stream YouTube videos as Jellyfin Series without downloading them. Uses .strm files + local stream proxy + YouTube Data API v3.",
+    "overview": "Add YouTube channels and stream their videos directly as Series in Jellyfin. No download to disk. SQLite database isolated from Jellyfin's main DB. Configurable polling per channel and retention policies.",
     "owner": "pepebarrascout",
-    "ownerLink": "https://github.com/pepebarrascout",
     "category": "Metadata",
+    "imageUrl": "https://raw.githubusercontent.com/pepebarrascout/jellyfin-plugin-youtube/main/logo.png",
     "versions": [
       {
         "version": "0.0.0.1",
-        "changelog": "Initial scaffold: plugin entry point, configuration page, SQLite store, channel sync skeleton, .strm generator, stream proxy skeleton, watched tracker. Not yet feature-complete - iteration 1.",
+        "changelog": "- Initial scaffold: plugin entry point, configuration page, SQLite store, channel sync skeleton, .strm generator, stream proxy skeleton, watched tracker",
         "targetAbi": "10.11.0.0",
-        "sourceUrl": "https://github.com/pepebarrascout/jellyfin-plugin-youtube/releases/download/v0.0.0.1/Jellyfin.Plugin.YouTube-v0.0.0.1.zip",
-        "checksum": "95d582ee93dcb4253f713acf154185661309e29a2b46f1f34920769bb9fcd967",
+        "sourceUrl": "https://github.com/pepebarrascout/jellyfin-plugin-youtube/releases/download/v0.0.0.1/jellyfin-plugin-youtube_0.0.0.1.zip",
+        "checksum": "fcc3b114251c1d0cd30e5f7eecc6e51d",
         "timestamp": "2026-09-15T19:14:00Z"
       }
     ]
