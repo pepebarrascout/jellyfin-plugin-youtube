@@ -6,8 +6,9 @@ namespace Jellyfin.Plugin.YouTube.Configuration;
 
 /// <summary>
 /// Plugin configuration persisted in Jellyfin's plugin config XML.
-/// Channel-level configuration (URL, polling interval, retention) is stored in
-/// the plugin's own SQLite database — not here. This only holds global settings.
+/// Channel list is stored here so the UI can save/load it via the built-in
+/// ApiClient.getPluginConfiguration/updatePluginConfiguration endpoints.
+/// SQLite holds the heavier data (video catalog, watched state, sync log).
 /// </summary>
 public class PluginConfiguration : BasePluginConfiguration
 {
@@ -18,15 +19,15 @@ public class PluginConfiguration : BasePluginConfiguration
     public string YouTubeApiKey { get; set; } = string.Empty;
 
     /// <summary>
-    /// Path to yt-dlp binary. If empty, plugin assumes 'yt-dlp' is in PATH.
-    /// On Raspberry Pi Docker: typically '/usr/local/bin/yt-dlp'.
+    /// Path to yt-dlp binary. If empty or yt-dlp not found, plugin falls back
+    /// to YoutubeExplode (no external binary needed).
+    /// On Raspberry Pi Docker with host yt-dlp mounted: '/usr/local/bin/yt-dlp'.
     /// </summary>
     public string YtDlpPath { get; set; } = "yt-dlp";
 
     /// <summary>
     /// Root directory where .strm files are written. The user must add this path
     /// as a "Series" library in Jellyfin. Default: /config/youtube_plugin
-    /// (works inside Docker Jellyfin containers where /config is the data volume).
     /// </summary>
     public string StrmRootPath { get; set; } = "/config/youtube_plugin";
 
@@ -37,14 +38,10 @@ public class PluginConfiguration : BasePluginConfiguration
     public int StreamProxyPort { get; set; } = 8585;
 
     /// <summary>
-    /// Maximum stream quality (yt-dlp -f format). Default: best[height<=1080].
+    /// Maximum stream quality. YoutubeExplode selects the best muxed stream up to
+    /// this height. yt-dlp uses this as -f format selector.
     /// </summary>
-    public string MaxQuality { get; set; } = "best[height<=1080]";
-
-    /// <summary>
-    /// Cache duration (hours) for resolved stream URLs. YouTube URLs expire ~6h.
-    /// </summary>
-    public int StreamUrlCacheHours { get; set; } = 5;
+    public string MaxQuality { get; set; } = "1080";
 
     /// <summary>
     /// Default polling interval (hours) for newly added channels.
@@ -59,7 +56,43 @@ public class PluginConfiguration : BasePluginConfiguration
 
     /// <summary>
     /// Whether the stream proxy is enabled. If false, .strm files contain
-    /// direct (short-lived) YouTube URLs.
+    /// direct (short-lived) YouTube URLs (not recommended - they expire in ~6h).
     /// </summary>
     public bool UseStreamProxy { get; set; } = true;
+
+    /// <summary>
+    /// Cache duration (hours) for resolved stream URLs. YouTube URLs expire ~6h.
+    /// Default 5h leaves a safety margin.
+    /// </summary>
+    public int StreamUrlCacheHours { get; set; } = 5;
+
+    /// <summary>
+    /// Prefer YoutubeExplode (no external binary) over yt-dlp.
+    /// Default true - works out-of-the-box without installing anything.
+    /// If false, always use yt-dlp (more robust to YouTube changes but requires binary).
+    /// </summary>
+    public bool PreferYoutubeExplode { get; set; } = true;
+
+    /// <summary>
+    /// Channel list managed from the configuration page. Each channel has its
+    /// own polling interval and retention policy.
+    /// </summary>
+    public List<ChannelConfig> Channels { get; set; } = new();
+}
+
+/// <summary>
+/// Per-channel configuration. Stored in PluginConfiguration.Channels.
+/// </summary>
+public class ChannelConfig
+{
+    public string Id { get; set; } = string.Empty;        // YouTube channel ID
+    public string Url { get; set; } = string.Empty;       // Original URL added by user
+    public string Name { get; set; } = string.Empty;      // Display name (resolved by API)
+    public int PollingIntervalHours { get; set; } = 6;
+    public string RetentionPolicy { get; set; } = "permanent"; // permanent | delete_after_2_days
+    public DateTime AddedAt { get; set; }
+    public DateTime LastSyncAt { get; set; }
+    public string? LastSyncStatus { get; set; }
+    public int VideoCount { get; set; }
+    public bool Disabled { get; set; } = false;
 }

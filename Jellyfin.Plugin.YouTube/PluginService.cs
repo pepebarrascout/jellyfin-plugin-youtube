@@ -10,6 +10,7 @@ using MediaBrowser.Common.Plugins;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Plugins;
+using MediaBrowser.Controller.Session;
 using MediaBrowser.Model.Plugins;
 using MediaBrowser.Model.Serialization;
 using Microsoft.Extensions.DependencyInjection;
@@ -40,6 +41,7 @@ public class PluginHostedService : IHostedService, IDisposable
 {
     private readonly ILogger<PluginHostedService> _logger;
     private readonly ILibraryManager _libraryManager;
+    private readonly ISessionManager _sessionManager;
     private PluginConfiguration? _config;
     private SQLiteStore? _db;
     private ChannelSyncService? _syncService;
@@ -49,10 +51,12 @@ public class PluginHostedService : IHostedService, IDisposable
 
     public PluginHostedService(
         ILogger<PluginHostedService> logger,
-        ILibraryManager libraryManager)
+        ILibraryManager libraryManager,
+        ISessionManager sessionManager)
     {
         _logger = logger;
         _libraryManager = libraryManager;
+        _sessionManager = sessionManager;
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
@@ -81,8 +85,8 @@ public class PluginHostedService : IHostedService, IDisposable
             _db.Initialize();
             _logger.LogInformation("YouTube plugin: SQLite initialized at {Path}", dbPath);
 
-            // Initialize watched tracker
-            _watchedTracker = new WatchedTracker(_db, _logger);
+            // Initialize watched tracker (subscribed to ISessionManager)
+            _watchedTracker = new WatchedTracker(_db, _sessionManager, _logger);
             _watchedTracker.Start();
 
             // Initialize stream proxy

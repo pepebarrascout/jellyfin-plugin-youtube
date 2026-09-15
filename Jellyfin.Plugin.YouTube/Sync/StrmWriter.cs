@@ -1,20 +1,16 @@
 using System;
 using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
+using Jellyfin.Plugin.YouTube.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.YouTube.Sync;
 
 /// <summary>
-/// Writes .strm files for each video. The .strm contains either:
-///   - The local proxy URL (default): http://127.0.0.1:PORT/youtube_plugin/stream/VIDEO_ID
-///   - Or the direct YouTube URL (if proxy disabled): https://www.youtube.com/watch?v=VIDEO_ID
+/// Writes .strm files for each video. The .strm contains:
+///   http://127.0.0.1:PORT/youtube_plugin/stream/VIDEO_ID
 ///
 /// Directory structure under StrmRootPath:
 ///   {StrmRootPath}/{channel_name}/Season 01/{video_id}.strm
-///   {StrmRootPath}/{channel_name}/poster.jpg
-///   {StrmRootPath}/{channel_name}/Season 01/poster.jpg (episode thumb)
 /// </summary>
 public class StrmWriter
 {
@@ -31,15 +27,15 @@ public class StrmWriter
         _logger = logger;
     }
 
-    public void EnsureChannelDirectory(Data.ChannelRow channel)
+    public void EnsureChannelDirectory(string channelName)
     {
-        var safeName = SafeName(channel.Name);
+        var safeName = SafeName(channelName);
         var channelDir = Path.Combine(_rootPath, safeName);
         var seasonDir = Path.Combine(channelDir, "Season 01");
         Directory.CreateDirectory(seasonDir);
     }
 
-    public void WriteStrm(Data.ChannelRow channel, Data.VideoRow video)
+    public void WriteStrm(ChannelConfig channel, Data.VideoRow video)
     {
         var safeChannel = SafeName(channel.Name);
         var seasonDir = Path.Combine(_rootPath, safeChannel, "Season 01");
@@ -53,9 +49,9 @@ public class StrmWriter
         File.WriteAllText(strmPath, content);
     }
 
-    public void DeleteStrm(Data.ChannelRow channel, string videoId)
+    public void DeleteStrm(string channelName, string videoId)
     {
-        var safeChannel = SafeName(channel.Name);
+        var safeChannel = SafeName(channelName);
         var strmPath = Path.Combine(_rootPath, safeChannel, "Season 01", $"{videoId}.strm");
         if (File.Exists(strmPath))
         {
@@ -64,9 +60,9 @@ public class StrmWriter
         }
     }
 
-    public void DeleteChannel(Data.ChannelRow channel)
+    public void DeleteChannelByName(string channelName)
     {
-        var safeChannel = SafeName(channel.Name);
+        var safeChannel = SafeName(channelName);
         var channelDir = Path.Combine(_rootPath, safeChannel);
         if (Directory.Exists(channelDir))
         {
@@ -75,9 +71,9 @@ public class StrmWriter
         }
     }
 
-    /// <summary>
-    /// Filename-safe version of a channel name.
-    /// </summary>
+    public void DeleteChannel(ChannelConfig channel)
+        => DeleteChannelByName(channel.Name);
+
     private static string SafeName(string name)
     {
         var invalid = Path.GetInvalidFileNameChars();

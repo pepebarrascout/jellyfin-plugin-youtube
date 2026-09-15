@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.YouTube.Configuration;
+using Jellyfin.Plugin.YouTube.Sync;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
 using MediaBrowser.Model.Plugins;
@@ -37,6 +38,26 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         "Stream YouTube videos as Jellyfin Series without downloading them.";
 
     public override Guid Id => Guid.Parse("a8c3b2e1-7f4d-4e6a-9b1c-2d5e8f0a1b3c");
+
+    /// <summary>
+    /// Called by Jellyfin when the user saves plugin configuration via the UI.
+    /// We use this hook to reload the scheduler when channels are added/removed.
+    /// </summary>
+    public override void UpdateConfiguration(BasePluginConfiguration configuration)
+    {
+        base.UpdateConfiguration(configuration);
+
+        // Reload scheduler if the sync service is already running
+        try
+        {
+            _ = PluginServiceHost.SyncService?.ReloadFromConfigAsync();
+            _logger.LogInformation("YouTube plugin: configuration updated, scheduler reloaded");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "YouTube plugin: failed to reload scheduler after config update");
+        }
+    }
 
     public IEnumerable<PluginPageInfo> GetPages()
     {

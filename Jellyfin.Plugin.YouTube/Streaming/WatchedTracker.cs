@@ -1,48 +1,84 @@
 using System;
+using System.IO;
+using System.Linq;
+using System.Text.RegularExpressions;
 using Jellyfin.Plugin.YouTube.Data;
+using MediaBrowser.Controller.Library;
+using MediaBrowser.Controller.Session;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.YouTube.Streaming;
 
 /// <summary>
-/// Listens to PlaybackStop events from Jellyfin. If the played item corresponds
-/// to a YouTube video (filename matches {videoId}.strm pattern), marks it
-/// as watched in the plugin's SQLite.
+/// Listens to Jellyfin playback events via ISessionManager. When a playback
+/// stops on an item whose path matches a YouTube .strm file, marks the video
+/// as watched in the plugin's own SQLite.
 ///
-/// NOTE: Full event subscription requires ISessionManager which is injected
-/// via Jellyfin's DI in v0.0.0.2. This scaffold exposes only the MarkWatched
-/// method for external callers. Does NOT modify Jellyfin's main DB - that's
-/// handled by Jellyfin's normal behavior for any library item.
+/// NOTE: This does NOT modify Jellyfin's main DB. Jellyfin handles its own
+/// PlaybackProgress for any library item; we only mirror that state into
+/// our SQLite for retention policy decisions.
 /// </summary>
 public class WatchedTracker : IDisposable
 {
     private readonly SQLiteStore _db;
     private readonly ILogger _logger;
+    private readonly ISessionManager _sessionManager;
     private bool _disposed;
 
-    public WatchedTracker(SQLiteStore db, ILogger logger)
+    // Match a .strm file like:
+    //   /config/youtube_plugin/Some Channel/Season 01/abc123XYZ.strm
+    // Group 1 = video id (filename without extension)
+    private static readonly Regex StrmPathPattern = new(
+        @"youtube_plugin[/\\].+[/\\]Season\s\d+[/\\]([A-Za-z0-9_-]{6,})\.strm$",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    public WatchedTracker(SQLiteStore db, ISessionManager sessionManager, ILogger logger)
     {
         _db = db;
+        _sessionManager = sessionManager;
         _logger = logger;
     }
 
     public void Start()
     {
-        _logger.LogInformation("WatchedTracker: scaffold started (event wiring pending next iteration)");
+        _sessionManager.PlaybackStopped += OnPlaybackStopped;
+        _logger.LogInformation("WatchedTracker: subscribed to PlaybackStopped events");
     }
 
-    /// <summary>
-    /// Marks the video as watched for the given user.
-    /// </summary>
-    public void MarkWatched(string videoId, string userId, long positionSeconds)
+    private void OnPlaybackStopped(object? sender, PlaybackStopEventArgs e)
     {
-        _db.MarkWatched(videoId, userId, positionSeconds);
-        _logger.LogInformation("WatchedTracker: marked {VideoId} watched for user {User}", videoId, userId);
+        try
+        {
+            var item = e.Item;
+            if (item == null) return;
+
+            var path = item.Path ?? "";
+            var match = StrmPathPattern.Match(path);
+            if (!match.Success) return;
+
+            var videoId = match.Groups[1].Value;
+            var userId = e.Users?.FirstOrDefault()?.Id.ToString() ?? "unknown";
+            var positionSec = (long)((e.PlaybackPositionTicks ?? 0) / TimeSpan.TicksPerSecond);
+
+            _db.MarkWatched(videoId, userId, positionSec);
+            _logger.LogInformation(
+                "WatchedTracker: marked {VideoId} watched by user {User} at position {Pos}s",
+                videoId, userId, positionSec);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "WatchedTracker: error handling PlaybackStopped event");
+        }
     }
 
     public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
+        try
+        {
+            _sessionManager.PlaybackStopped -= OnPlaybackStopped;
+        }
+        catch { /* ignore */ }
     }
 }

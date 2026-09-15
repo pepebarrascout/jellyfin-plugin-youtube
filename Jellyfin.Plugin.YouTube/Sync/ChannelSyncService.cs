@@ -9,12 +9,16 @@ using Jellyfin.Plugin.YouTube.Data;
 using Microsoft.Extensions.Logging;
 using Quartz;
 using Quartz.Impl;
+using Quartz.Impl.Matchers;
 
 namespace Jellyfin.Plugin.YouTube.Sync;
 
 /// <summary>
 /// Background scheduler that periodically syncs each registered channel.
 /// Uses Quartz.NET for per-channel scheduling with independent intervals.
+///
+/// Source of truth for the channel list is PluginConfiguration.Channels (persisted
+/// in Jellyfin's XML config). SQLite holds the heavier data (videos, watched, log).
 /// </summary>
 public class ChannelSyncService : IDisposable
 {
@@ -37,6 +41,8 @@ public class ChannelSyncService : IDisposable
         _scheduler = await factory.GetScheduler().ConfigureAwait(false);
         await _scheduler.Start().ConfigureAwait(false);
 
+        PluginServiceHost.SyncService = this;
+
         // Initial sync of all channels (in background, don't block startup)
         _ = Task.Run(async () =>
         {
@@ -44,23 +50,23 @@ public class ChannelSyncService : IDisposable
             await SyncAllChannelsAsync().ConfigureAwait(false);
         });
 
-        // Schedule per-channel jobs
-        var channels = _db.GetAllChannels();
-        foreach (var ch in channels)
+        // Schedule per-channel jobs based on config
+        var channels = _config.Channels ?? new();
+        foreach (var ch in channels.Where(c => !c.Disabled))
         {
             await ScheduleChannelAsync(ch).ConfigureAwait(false);
         }
         _logger.LogInformation("YouTube plugin: scheduled {Count} channel sync jobs", channels.Count);
     }
 
-    public async Task ScheduleChannelAsync(ChannelRow channel)
+    public async Task ScheduleChannelAsync(ChannelConfig channel)
     {
         if (_scheduler == null) return;
         var jobKey = new JobKey($"youtube-sync-{channel.Id}", "youtube");
         var triggerKey = new TriggerKey($"youtube-trigger-{channel.Id}", "youtube");
 
-        // Delete existing
         await _scheduler.DeleteJob(jobKey).ConfigureAwait(false);
+        if (channel.Disabled) return;
 
         var job = JobBuilder.Create<ChannelSyncJob>()
             .WithIdentity(jobKey)
@@ -83,6 +89,36 @@ public class ChannelSyncService : IDisposable
         await _scheduler.DeleteJob(new JobKey($"youtube-sync-{channelId}", "youtube")).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Called when the user saves configuration in the UI. Resyncs the scheduler
+    /// to match the new channel list.
+    /// </summary>
+    public async Task ReloadFromConfigAsync()
+    {
+        if (_scheduler == null) return;
+        var channels = _config.Channels ?? new();
+        var channelIds = channels.Select(c => c.Id).ToHashSet();
+
+        // Unschedule channels that no longer exist
+        var existingJobs = await _scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEquals("youtube")).ConfigureAwait(false);
+        foreach (var jobKey in existingJobs.ToList())
+        {
+            var id = jobKey.Name.Replace("youtube-sync-", "");
+            if (!channelIds.Contains(id))
+            {
+                await _scheduler.DeleteJob(jobKey).ConfigureAwait(false);
+            }
+        }
+
+        // Schedule any new channel
+        foreach (var ch in channels.Where(c => !c.Disabled))
+        {
+            await ScheduleChannelAsync(ch).ConfigureAwait(false);
+        }
+
+        _logger.LogInformation("YouTube plugin: reloaded {Count} channel schedules", channels.Count);
+    }
+
     public async Task SyncAllChannelsAsync()
     {
         if (string.IsNullOrEmpty(_config.YouTubeApiKey))
@@ -91,25 +127,23 @@ public class ChannelSyncService : IDisposable
             return;
         }
 
-        var channels = _db.GetAllChannels();
-        foreach (var ch in channels)
+        var channels = _config.Channels ?? new();
+        foreach (var ch in channels.Where(c => !c.Disabled))
         {
             try { await SyncChannelAsync(ch).ConfigureAwait(false); }
             catch (Exception ex) { _logger.LogError(ex, "Sync failed for channel {Id}", ch.Id); }
         }
     }
 
-    public async Task SyncChannelAsync(ChannelRow channel)
+    public async Task SyncChannelAsync(ChannelConfig channel)
     {
         _logger.LogInformation("YouTube plugin: syncing channel {Name} ({Id})", channel.Name, channel.Id);
-        var startedAt = DateTime.UtcNow;
         var strmWriter = new StrmWriter(_config.StrmRootPath, _config.UseStreamProxy, _config.StreamProxyPort, _logger);
 
         try
         {
             var client = new YouTubeApiClient(_config.YouTubeApiKey, _logger);
 
-            // Resolve channel info to get uploads playlist (cached if URL hasn't changed)
             ChannelInfo? info;
             try
             {
@@ -120,24 +154,24 @@ public class ChannelSyncService : IDisposable
                 _logger.LogError(ex, "Resolve channel failed for {Url}", channel.Url);
                 channel.LastSyncAt = DateTime.UtcNow;
                 channel.LastSyncStatus = $"error: resolve failed: {ex.Message}";
-                _db.UpsertChannel(channel);
+                SaveChannelConfig(channel);
                 return;
             }
             if (info == null)
             {
                 channel.LastSyncStatus = "error: channel not found";
-                _db.UpsertChannel(channel);
+                SaveChannelConfig(channel);
                 return;
             }
 
-            // Update name if it changed
+            // Update name if changed
             if (!string.IsNullOrEmpty(info.Title) && info.Title != channel.Name)
             {
-                strmWriter.DeleteChannel(channel);
+                strmWriter.DeleteChannelByName(channel.Name);
                 channel.Name = info.Title;
             }
 
-            strmWriter.EnsureChannelDirectory(channel);
+            strmWriter.EnsureChannelDirectory(channel.Name);
 
             // Fetch latest videos
             var videos = await client.ListChannelVideosAsync(info.UploadsPlaylistId, maxResults: 50).ConfigureAwait(false);
@@ -163,9 +197,8 @@ public class ChannelSyncService : IDisposable
             channel.VideoCount = videos.Count;
             channel.LastSyncAt = DateTime.UtcNow;
             channel.LastSyncStatus = $"ok: {added} videos";
-            _db.UpsertChannel(channel);
+            SaveChannelConfig(channel);
 
-            // Apply retention policy
             ApplyRetention(channel, strmWriter);
 
             _logger.LogInformation("YouTube plugin: sync complete for {Name}: {Count} videos", channel.Name, added);
@@ -175,11 +208,28 @@ public class ChannelSyncService : IDisposable
             _logger.LogError(ex, "YouTube plugin: sync failed for {Name}", channel.Name);
             channel.LastSyncAt = DateTime.UtcNow;
             channel.LastSyncStatus = $"error: {ex.Message}";
-            _db.UpsertChannel(channel);
+            SaveChannelConfig(channel);
         }
     }
 
-    private void ApplyRetention(ChannelRow channel, StrmWriter strmWriter)
+    private void SaveChannelConfig(ChannelConfig channel)
+    {
+        // SQLite mirror of channel row (for join queries with videos/watched)
+        _db.UpsertChannel(new ChannelRow
+        {
+            Id = channel.Id,
+            Url = channel.Url,
+            Name = channel.Name,
+            PollingIntervalHours = channel.PollingIntervalHours,
+            RetentionPolicy = channel.RetentionPolicy,
+            AddedAt = channel.AddedAt,
+            LastSyncAt = channel.LastSyncAt,
+            LastSyncStatus = channel.LastSyncStatus,
+            VideoCount = channel.VideoCount
+        });
+    }
+
+    private void ApplyRetention(ChannelConfig channel, StrmWriter strmWriter)
     {
         if (channel.RetentionPolicy == "permanent") return;
         if (channel.RetentionPolicy == "delete_after_2_days")
@@ -187,7 +237,7 @@ public class ChannelSyncService : IDisposable
             var oldVideoIds = _db.GetVideosOlderThan(channel.Id, days: 2);
             foreach (var vid in oldVideoIds)
             {
-                strmWriter.DeleteStrm(channel, vid);
+                strmWriter.DeleteStrm(channel.Name, vid);
                 _db.DeleteVideo(vid);
             }
             if (oldVideoIds.Count > 0)
@@ -224,13 +274,17 @@ internal class ChannelSyncJob : IJob
 public static class PluginServiceHost
 {
     public static ChannelSyncService? SyncService { get; set; }
-    public static Data.SQLiteStore? Database { get; set; }
+    public static SQLiteStore? Database { get; set; }
 
     public static async Task RunChannelSyncAsync(string channelId)
     {
-        if (SyncService == null || Database == null) return;
-        var channel = Database.GetChannel(channelId);
-        if (channel == null) return;
-        await SyncService.SyncChannelAsync(channel).ConfigureAwait(false);
+        if (SyncService == null) return;
+        var plugin = Plugin.Instance;
+        if (plugin == null) return;
+
+        var ch = plugin.Configuration.Channels?.FirstOrDefault(c => c.Id == channelId);
+        if (ch == null) return;
+
+        await SyncService.SyncChannelAsync(ch).ConfigureAwait(false);
     }
 }
