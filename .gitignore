@@ -1,0 +1,18 @@
+# Build artifacts
+bin/
+obj/
+dist/*.dll
+dist/*.zip
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.user
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

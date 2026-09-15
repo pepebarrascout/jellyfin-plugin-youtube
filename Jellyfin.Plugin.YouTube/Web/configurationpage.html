@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>YouTube Streaming Plugin</title>
+<style>
+  .yt-plugin { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 16px 24px; max-width: 1100px; margin: 0 auto; }
+  .yt-plugin h2 { margin-top: 0; }
+  .yt-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 16px; margin: 12px 0; }
+  .yt-form-row { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; margin-bottom: 12px; }
+  .yt-form-row > div { flex: 1; min-width: 180px; }
+  .yt-form-row label { display: block; font-size: 12px; opacity: 0.8; margin-bottom: 4px; }
+  .yt-form-row input, .yt-form-row select { width: 100%; padding: 6px 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; color: inherit; }
+  .yt-btn { padding: 8px 18px; border: 0; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500; }
+  .yt-btn-primary { background: #c4302b; color: white; }
+  .yt-btn-secondary { background: rgba(255,255,255,0.1); color: inherit; }
+  .yt-btn-danger { background: #b03030; color: white; padding: 4px 12px; font-size: 12px; }
+  .yt-btn-sm { padding: 4px 10px; font-size: 12px; }
+  .yt-channel-list { margin-top: 16px; }
+  .yt-channel { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .yt-channel-info { flex: 1; }
+  .yt-channel-info .name { font-weight: 600; }
+  .yt-channel-info .meta { font-size: 12px; opacity: 0.7; margin-top: 4px; }
+  .yt-channel-info .status { font-size: 11px; padding: 2px 6px; border-radius: 3px; background: rgba(255,255,255,0.1); margin-left: 8px; }
+  .yt-status-banner { padding: 12px; border-radius: 4px; margin-bottom: 16px; font-size: 13px; }
+  .yt-status-ok { background: rgba(67,134,89,0.2); border-left: 3px solid #438659; }
+  .yt-status-warn { background: rgba(152,121,61,0.2); border-left: 3px solid #98793d; }
+  .yt-status-error { background: rgba(148,67,59,0.2); border-left: 3px solid #94433b; }
+  .yt-help { font-size: 12px; opacity: 0.7; margin-top: 8px; line-height: 1.5; }
+  .yt-help code { background: rgba(0,0,0,0.4); padding: 1px 4px; border-radius: 2px; }
+  .yt-spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: yt-spin 0.8s linear infinite; }
+  @keyframes yt-spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="yt-plugin">
+  <h2>YouTube Streaming</h2>
+  <p style="opacity:0.8;margin-top:-8px">Agrega canales de YouTube como Series en Jellyfin. Streaming sin descarga.</p>
+
+  <div id="ytStatusBanner" class="yt-status-banner yt-status-warn">
+    Cargando estado...
+  </div>
+
+  <div class="yt-card">
+    <h3 style="margin-top:0">Agregar canal</h3>
+    <div class="yt-form-row">
+      <div>
+        <label>URL del canal o video</label>
+        <input type="text" id="ytChannelUrl" placeholder="https://www.youtube.com/@MiCanal" />
+      </div>
+      <div style="max-width:120px">
+        <label>Polling (horas)</label>
+        <input type="number" id="ytPollingHours" value="6" min="1" max="168" />
+      </div>
+      <div style="max-width:220px">
+        <label>Retención</label>
+        <select id="ytRetention">
+          <option value="permanent">Permanente</option>
+          <option value="delete_after_2_days">Borrar vistos tras 2 días</option>
+        </select>
+      </div>
+      <div>
+        <button class="yt-btn yt-btn-primary" id="ytAddBtn">Agregar</button>
+      </div>
+    </div>
+    <div class="yt-help">
+      Formatos aceptados: <code>https://www.youtube.com/@handle</code>,
+      <code>https://www.youtube.com/channel/UCxxxx</code>,
+      <code>https://www.youtube.com/c/CustomName</code>,
+      <code>https://www.youtube.com/watch?v=VIDEO_ID</code>
+    </div>
+  </div>
+
+  <div class="yt-card">
+    <h3 style="margin-top:0">Canales configurados</h3>
+    <div class="yt-channel-list" id="ytChannelList">
+      <div style="opacity:0.7;text-align:center;padding:20px">Cargando...</div>
+    </div>
+  </div>
+
+  <div class="yt-card">
+    <h3 style="margin-top:0">Configuración global</h3>
+    <p style="font-size:13px;opacity:0.8">
+      Las opciones globales (API key de YouTube, ruta de yt-dlp, puerto del proxy, calidad máxima)
+      se configuran en <code>Dashboard &rarr; Plugins &rarr; YouTube Streaming &rarr; Settings</code>.
+    </p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="yt-btn yt-btn-secondary yt-btn-sm" id="ytRefreshBtn">Refrescar</button>
+      <button class="yt-btn yt-btn-secondary yt-btn-sm" id="ytTestYtdlpBtn">Probar yt-dlp</button>
+      <button class="yt-btn yt-btn-secondary yt-btn-sm" id="ytSyncAllBtn">Sincronizar todo</button>
+    </div>
+    <div id="ytTestResult" style="margin-top:8px;font-size:12px;opacity:0.8"></div>
+  </div>
+</div>
+
+<script src="configurationpage.js" type="module"></script>
+</body>
+</html>
