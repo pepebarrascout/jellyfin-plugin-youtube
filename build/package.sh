@@ -5,9 +5,9 @@
 set -e
 
 PROJECT_DIR="/home/z/my-project/jellyfin-plugin-youtube"
-BIN_DIR="$PROJECT_DIR/Jellyfin.Plugin.YouTube/bin/Release/net9.0"
+BIN_DIR="$PROJECT_DIR/Jellyfin.Plugin.YouTube/bin/Release/net10.0"
 DIST_DIR="$PROJECT_DIR/dist"
-VERSION="0.0.0.4"
+VERSION="0.0.0.5"
 
 # DLLs that Jellyfin already provides - DO NOT include in the zip
 # These include all transitive dependencies of Jellyfin.Controller/Model/Extensions:

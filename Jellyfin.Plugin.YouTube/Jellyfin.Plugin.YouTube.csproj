@@ -1,12 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>Jellyfin.Plugin.YouTube</RootNamespace>
     <AssemblyName>Jellyfin.Plugin.YouTube</AssemblyName>
-    <AssemblyVersion>0.0.0.4</AssemblyVersion>
-    <FileVersion>0.0.0.4</FileVersion>
-    <Version>0.0.0.4</Version>
+    <AssemblyVersion>0.0.0.5</AssemblyVersion>
+    <FileVersion>0.0.0.5</FileVersion>
+    <Version>0.0.0.5</Version>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <Nullable>enable</Nullable>
@@ -20,16 +20,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Paquetes de Jellyfin - NO incluir en el zip (Jellyfin los provee) -->
-    <PackageReference Include="Jellyfin.Controller" Version="10.11.*">
+    <!-- Paquetes de Jellyfin 12.1 - NO incluir en el zip (Jellyfin los provee) -->
+    <PackageReference Include="Jellyfin.Controller" Version="12.1.*">
       <Private>false</Private>
     </PackageReference>
-    <PackageReference Include="Jellyfin.Model" Version="10.11.*">
+    <PackageReference Include="Jellyfin.Model" Version="12.1.*">
       <Private>false</Private>
     </PackageReference>
 
     <!-- SQLite para base de datos propia (necesario embeber) -->
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.*" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.*" />
   </ItemGroup>
 
 </Project>

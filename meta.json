@@ -5,9 +5,9 @@
   "overview": "Agrega canales de YouTube y reproduce sus videos directamente como Series en Jellyfin. Sin descarga al disco. No requiere API key de YouTube - usa yt-dlp para todos los metadatos. Base de datos SQLite aislada de la BD principal de Jellyfin. Polling configurable por canal y políticas de retención.",
   "owner": "pepebarrascout",
   "category": "Metadata",
-  "version": "0.0.0.4",
-  "changelog": "- Eliminada dependencia de YoutubeExplode (plugin reducido de 8.3MB a 140KB)\n- Fix InvalidCastException en SQLiteStore.Initialize (PRAGMA user_version devuelve string)\n- Todos los textos, logs y mensajes traducidos al español\n- Feedback visual completo en botones (loading + toasts de éxito/error)\n- Verificación de yt-dlp al iniciar el plugin (log informativo)",
-  "targetAbi": "10.11.0.0",
-  "timestamp": "2026-09-15T22:30:00Z",
+  "version": "0.0.0.5",
+  "changelog": "- Compatibilidad con Jellyfin 12.1 (.NET 10)\n- Actualizadas referencias a Jellyfin.Controller/Model 12.1.0\n- Microsoft.Data.Sqlite actualizado a versión compatible con .NET 10\n- Todas las demás funciones siguen igual que v0.0.0.4",
+  "targetAbi": "12.1.0.0",
+  "timestamp": "2026-09-16T00:00:00Z",
   "imagePath": "logo.png"
 }
