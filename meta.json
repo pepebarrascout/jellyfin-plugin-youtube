@@ -1,13 +1,13 @@
 {
   "guid": "a8c3b2e1-7f4d-4e6a-9b1c-2d5e8f0a1b3c",
   "name": "Jellyfin YouTube Plugin",
-  "description": "Stream YouTube videos as Jellyfin Series without downloading them. Uses .strm files + local stream proxy + YoutubeExplode + yt-dlp fallback.",
-  "overview": "Add YouTube channels and stream their videos directly as Series in Jellyfin. No download to disk. SQLite database isolated from Jellyfin's main DB. Configurable polling per channel and retention policies. YoutubeExplode works out-of-the-box without external binaries; falls back to yt-dlp if installed.",
+  "description": "Stream YouTube videos as Jellyfin Series without downloading them. Uses .strm files + local stream proxy + yt-dlp + YoutubeExplode.",
+  "overview": "Add YouTube channels and stream their videos directly as Series in Jellyfin. No download to disk. No YouTube Data API key required - uses yt-dlp for all metadata. SQLite database isolated from Jellyfin's main DB. Configurable polling per channel and retention policies.",
   "owner": "pepebarrascout",
   "category": "Metadata",
-  "version": "0.0.0.2",
-  "changelog": "- v0.0.0.2: Configuration page functional via Jellyfin built-in endpoints, YoutubeExplode primary resolver + yt-dlp fallback, WatchedTracker subscribed to PlaybackStopped events",
+  "version": "0.0.0.3",
+  "changelog": "- v0.0.0.3: Fix plugin loading - bundle NuGet dependencies (YoutubeExplode, Microsoft.Data.Sqlite) in the zip. Removed YouTube Data API v3 dependency (uses yt-dlp --flat-playlist for channel metadata). Removed Quartz (uses System.Threading.Timer). Removed Polly (try/catch simple).",
   "targetAbi": "10.11.0.0",
-  "timestamp": "2026-09-15T20:30:00Z",
+  "timestamp": "2026-09-15T21:30:00Z",
   "imagePath": "logo.png"
 }

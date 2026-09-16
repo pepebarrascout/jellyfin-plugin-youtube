@@ -9,37 +9,32 @@ namespace Jellyfin.Plugin.YouTube.Configuration;
 /// Channel list is stored here so the UI can save/load it via the built-in
 /// ApiClient.getPluginConfiguration/updatePluginConfiguration endpoints.
 /// SQLite holds the heavier data (video catalog, watched state, sync log).
+///
+/// No YouTube Data API v3 key required - yt-dlp handles all metadata.
 /// </summary>
 public class PluginConfiguration : BasePluginConfiguration
 {
     /// <summary>
-    /// YouTube Data API v3 key. Required for listing channel videos and metadata.
-    /// Free quota: 10,000 units/day.
-    /// </summary>
-    public string YouTubeApiKey { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Path to yt-dlp binary. If empty or yt-dlp not found, plugin falls back
-    /// to YoutubeExplode (no external binary needed).
-    /// On Raspberry Pi Docker with host yt-dlp mounted: '/usr/local/bin/yt-dlp'.
+    /// Path to yt-dlp binary. REQUIRED for the plugin to work.
+    /// Inside Docker with host yt-dlp mounted: '/usr/local/bin/yt-dlp'.
+    /// If 'yt-dlp' is in PATH inside the container, leave as 'yt-dlp'.
     /// </summary>
     public string YtDlpPath { get; set; } = "yt-dlp";
 
     /// <summary>
     /// Root directory where .strm files are written. The user must add this path
-    /// as a "Series" library in Jellyfin. Default: /config/youtube_plugin
+    /// as a "Shows" library in Jellyfin. Default: /config/youtube_plugin
     /// </summary>
     public string StrmRootPath { get; set; } = "/config/youtube_plugin";
 
     /// <summary>
-    /// Port for the local stream proxy. Must not conflict with Jellyfin's ports
-    /// (8096 default). Default 8585.
+    /// Port for the local stream proxy. Default 8585.
     /// </summary>
     public int StreamProxyPort { get; set; } = 8585;
 
     /// <summary>
-    /// Maximum stream quality. YoutubeExplode selects the best muxed stream up to
-    /// this height. yt-dlp uses this as -f format selector.
+    /// Maximum stream quality (height). yt-dlp uses this in -f format selector,
+    /// YoutubeExplode filters muxed streams by this height.
     /// </summary>
     public string MaxQuality { get; set; } = "1080";
 
@@ -62,14 +57,13 @@ public class PluginConfiguration : BasePluginConfiguration
 
     /// <summary>
     /// Cache duration (hours) for resolved stream URLs. YouTube URLs expire ~6h.
-    /// Default 5h leaves a safety margin.
     /// </summary>
     public int StreamUrlCacheHours { get; set; } = 5;
 
     /// <summary>
-    /// Prefer YoutubeExplode (no external binary) over yt-dlp.
-    /// Default true - works out-of-the-box without installing anything.
-    /// If false, always use yt-dlp (more robust to YouTube changes but requires binary).
+    /// Prefer YoutubeExplode (no external binary) over yt-dlp for stream URL resolution.
+    /// If false, always use yt-dlp for stream URL resolution.
+    /// In both cases, yt-dlp is the source of channel/video metadata.
     /// </summary>
     public bool PreferYoutubeExplode { get; set; } = true;
 
@@ -85,11 +79,16 @@ public class PluginConfiguration : BasePluginConfiguration
 /// </summary>
 public class ChannelConfig
 {
-    public string Id { get; set; } = string.Empty;        // YouTube channel ID
-    public string Url { get; set; } = string.Empty;       // Original URL added by user
-    public string Name { get; set; } = string.Empty;      // Display name (resolved by API)
+    /// <summary>
+    /// YouTube channel ID (resolved by yt-dlp on first sync).
+    /// Before first sync, this equals the URL the user entered.
+    /// </summary>
+    public string Id { get; set; } = string.Empty;
+
+    public string Url { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
     public int PollingIntervalHours { get; set; } = 6;
-    public string RetentionPolicy { get; set; } = "permanent"; // permanent | delete_after_2_days
+    public string RetentionPolicy { get; set; } = "permanent";
     public DateTime AddedAt { get; set; }
     public DateTime LastSyncAt { get; set; }
     public string? LastSyncStatus { get; set; }

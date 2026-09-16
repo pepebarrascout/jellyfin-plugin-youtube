@@ -9,9 +9,7 @@
 
             <p style="color:#888;font-size:0.9rem;margin-bottom:20px;">
                 Stream YouTube videos as Jellyfin Series without downloading them.
-                Get your YouTube Data API v3 key at
-                <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" style="color:#5b9bd5;">Google Cloud Console</a>
-                (free, 10,000 units/day quota).
+                No YouTube Data API key required — uses yt-dlp for all metadata.
             </p>
 
             <!-- Status banner -->
@@ -24,17 +22,14 @@
                 <h3 style="margin-bottom:12px;">Global Settings</h3>
 
                 <div class="inputContainer">
-                    <label for="ytApiKey">YouTube Data API v3 Key</label>
-                    <input type="password" id="ytApiKey" is="emby-input" placeholder="AIza..." />
-                </div>
-
-                <div class="inputContainer">
-                    <label for="ytYtDlpPath">yt-dlp binary path (optional, fallback)</label>
+                    <label for="ytYtDlpPath">yt-dlp binary path (REQUIRED)</label>
                     <input type="text" id="ytYtDlpPath" is="emby-input" placeholder="yt-dlp" />
                     <div class="fieldDescription">
-                        Leave as "yt-dlp" to use system PATH. If you have yt-dlp installed elsewhere
-                        (e.g. mounted from host), specify full path. Plugin uses YoutubeExplode by default
-                        and falls back to yt-dlp only when YoutubeExplode fails.
+                        Path to the yt-dlp binary. Used for channel metadata AND stream URL resolution fallback.<br/>
+                        Inside Docker: mount yt-dlp from host, e.g.:
+                        <code style="background:#333;padding:1px 4px;border-radius:2px;">
+                        -v /usr/bin/yt-dlp:/usr/local/bin/yt-dlp:ro</code><br/>
+                        Then set this to <code style="background:#333;padding:1px 4px;border-radius:2px;">/usr/local/bin/yt-dlp</code>
                     </div>
                 </div>
 
@@ -81,10 +76,12 @@
                 <div class="checkboxContainer checkboxContainer-withDescription">
                     <label>
                         <input type="checkbox" id="ytPreferExplode" is="emby-checkbox" checked />
-                        <span>Prefer YoutubeExplode (no external binary needed)</span>
+                        <span>Prefer YoutubeExplode for stream URL resolution</span>
                     </label>
                     <div class="fieldDescription">
-                        Uses an in-process .NET library. Falls back to yt-dlp automatically if it fails.
+                        Uses an in-process .NET library (no subprocess overhead). Falls back to
+                        yt-dlp automatically if it fails (age-restricted, members-only, etc.).
+                        Channel metadata always uses yt-dlp regardless.
                     </div>
                 </div>
 
@@ -118,8 +115,8 @@
                     </button>
                 </div>
                 <p style="color:#888;font-size:0.8rem;margin-top:8px;">
-                    Adding a channel triggers an immediate sync in the background. The .strm files
-                    will appear within ~30 seconds at most.
+                    Adding a channel triggers an immediate sync in the background via yt-dlp.
+                    The .strm files will appear within ~30 seconds at most.
                 </p>
             </div>
 
@@ -138,19 +135,24 @@
                     <button id="ytRefreshBtn" type="button" is="emby-button" class="raised">
                         <span>Refresh</span>
                     </button>
+                    <button id="ytTestYtdlpBtn" type="button" is="emby-button" class="raised">
+                        <span>Test yt-dlp</span>
+                    </button>
                     <button id="ytSyncAllBtn" type="button" is="emby-button" class="raised">
                         <span>Sync All Channels Now</span>
                     </button>
                 </div>
-                <div class="inputContainer">
-                    <label for="ytTestVideoId">Test resolver (video ID)</label>
+                <div id="ytTestYtdlpResult" style="margin-top:8px;font-family:monospace;font-size:0.85rem;color:#aaa;"></div>
+
+                <div class="inputContainer" style="margin-top:16px;">
+                    <label for="ytTestVideoId">Test stream resolver (video ID)</label>
                     <div style="display:flex;gap:8px;align-items:end;">
                         <input type="text" id="ytTestVideoId" is="emby-input" placeholder="dQw4w9WgXcQ" style="flex:1;" />
                         <button id="ytTestResolverBtn" type="button" is="emby-button" class="raised" style="flex:0 0 auto;">
                             <span>Test</span>
                         </button>
                     </div>
-                    <div class="fieldDescription">Tests YoutubeExplode + yt-dlp fallback for a video ID.</div>
+                    <div class="fieldDescription">Tests the stream proxy (YoutubeExplode + yt-dlp fallback).</div>
                 </div>
                 <div id="ytTestResult" style="margin-top:10px;font-family:monospace;font-size:0.85rem;color:#aaa;"></div>
             </div>

@@ -1,7 +1,6 @@
 // YouTube Streaming plugin configuration page.
-// Uses Jellyfin's built-in plugin config endpoints (no custom REST API needed):
-//   ApiClient.getPluginConfiguration(pluginId) -> PluginConfiguration (incl. Channels array)
-//   ApiClient.updatePluginConfiguration(pluginId, config) -> saves to Jellyfin XML
+// Uses Jellyfin's built-in plugin config endpoints (no custom REST API needed).
+// No YouTube Data API key required - yt-dlp handles channel metadata.
 
 const PLUGIN_ID = 'a8c3b2e1-7f4d-4e6a-9b1c-2d5e8f0a1b3c';
 
@@ -14,28 +13,22 @@ function fmtDate(s) {
     try { return new Date(s).toLocaleString(); } catch { return s; }
 }
 
-// Load config from Jellyfin
 async function loadConfig() {
     return new Promise((resolve, reject) => {
-        ApiClient.getPluginConfiguration(PLUGIN_ID).then(function (cfg) {
-            resolve(cfg);
-        }).catch(function (err) { reject(err); });
+        ApiClient.getPluginConfiguration(PLUGIN_ID).then(resolve).catch(reject);
     });
 }
 
-// Save config to Jellyfin
 async function saveConfig(cfg) {
     return new Promise((resolve, reject) => {
-        ApiClient.updatePluginConfiguration(PLUGIN_ID, cfg).then(function () {
-            resolve(true);
-        }).catch(function (err) { reject(err); });
+        ApiClient.updatePluginConfiguration(PLUGIN_ID, cfg).then(() => resolve(true)).catch(reject);
     });
 }
 
 function renderStatusBanner(cfg) {
     const banner = document.getElementById('ytStatusBanner');
     const issues = [];
-    if (!cfg.YouTubeApiKey) issues.push('YouTube Data API v3 key is not configured');
+    if (!cfg.YtDlpPath) issues.push('yt-dlp path is not configured (REQUIRED)');
     if (!cfg.StrmRootPath) issues.push('.strm root path is empty');
 
     if (issues.length === 0) {
@@ -43,8 +36,8 @@ function renderStatusBanner(cfg) {
         banner.style.border = '1px solid #2d5a2d';
         banner.style.color = '#6ee66e';
         banner.innerHTML = '<strong>OK.</strong> Plugin is configured. ' +
-            'yt-dlp fallback: <code>' + escapeHtml(cfg.YtDlpPath || 'yt-dlp') + '</code>. ' +
-            'Resolver: <code>' + (cfg.PreferYoutubeExplode ? 'YoutubeExplode (primary) + yt-dlp (fallback)' : 'yt-dlp only') + '</code>. ' +
+            'yt-dlp: <code>' + escapeHtml(cfg.YtDlpPath || 'yt-dlp') + '</code>. ' +
+            'Stream resolver: <code>' + (cfg.PreferYoutubeExplode ? 'YoutubeExplode + yt-dlp fallback' : 'yt-dlp only') + '</code>. ' +
             'Proxy: ' + (cfg.UseStreamProxy ? 'port ' + cfg.StreamProxyPort : 'disabled') + '. ' +
             'Strm root: <code>' + escapeHtml(cfg.StrmRootPath) + '</code>.';
     } else {
@@ -57,7 +50,6 @@ function renderStatusBanner(cfg) {
 }
 
 function populateForm(cfg) {
-    document.getElementById('ytApiKey').value = cfg.YouTubeApiKey || '';
     document.getElementById('ytYtDlpPath').value = cfg.YtDlpPath || 'yt-dlp';
     document.getElementById('ytStrmRoot').value = cfg.StrmRootPath || '/config/youtube_plugin';
     document.getElementById('ytProxyPort').value = cfg.StreamProxyPort || 8585;
@@ -67,7 +59,6 @@ function populateForm(cfg) {
 }
 
 function collectConfig(cfg) {
-    cfg.YouTubeApiKey = document.getElementById('ytApiKey').value.trim();
     cfg.YtDlpPath = document.getElementById('ytYtDlpPath').value.trim() || 'yt-dlp';
     cfg.StrmRootPath = document.getElementById('ytStrmRoot').value.trim() || '/config/youtube_plugin';
     cfg.StreamProxyPort = parseInt(document.getElementById('ytProxyPort').value, 10) || 8585;
@@ -99,7 +90,7 @@ function renderChannels(channels) {
                 <div style="font-size:0.75rem;opacity:0.6;margin-top:4px;">
                     Polling: every ${c.PollingIntervalHours}h &middot;
                     Retention: ${c.RetentionPolicy === 'permanent' ? 'permanent' : 'delete after 2d watched'}<br/>
-                    ${c.LastSyncAt ? 'Last sync: ' + fmtDate(c.LastSyncAt) : 'Never synced'}
+                    ${c.LastSyncAt && c.LastSyncAt !== '1970-01-01T00:00:00Z' ? 'Last sync: ' + fmtDate(c.LastSyncAt) : 'Never synced'}
                     ${c.LastSyncStatus ? ' &middot; <span style="color:' + statusColor + ';">' + escapeHtml(c.LastSyncStatus) + '</span>' : ''}
                 </div>
             </div>
@@ -113,16 +104,11 @@ function renderChannels(channels) {
     document.querySelectorAll('.yt-sync-btn').forEach(btn => {
         btn.onclick = async () => {
             btn.textContent = 'Syncing...';
-            // Trigger sync by updating LastSyncAt to a sentinel value the sync service picks up.
-            // We use the UpdateConfiguration hook: just saving config triggers scheduler reload,
-            // and the next sync cycle will pick it up. For immediate sync, set the channel's
-            // polling to a very short interval is overkill - instead just call save which
-            // triggers reload, then manually trigger via the channel's existing schedule.
             try {
                 const cfg = await loadConfig();
                 const ch = cfg.Channels.find(c => c.Id === btn.dataset.id);
                 if (ch) {
-                    ch.LastSyncAt = '1970-01-01T00:00:00Z'; // forces re-sync trigger
+                    ch.LastSyncAt = '1970-01-01T00:00:00Z';
                     await saveConfig(cfg);
                     alert('Sync scheduled for: ' + ch.Name + '\n\nIt will start within a few seconds.');
                     setTimeout(loadAndRender, 5000);
@@ -176,7 +162,7 @@ document.getElementById('ytSaveBtn').onclick = async () => {
     }
 };
 
-// Add channel - resolves channel via YouTube API to get ID, name
+// Add channel - just save URL with placeholder; the sync service resolves it via yt-dlp
 document.getElementById('ytAddChannelBtn').onclick = async () => {
     const url = document.getElementById('ytNewChannelUrl').value.trim();
     if (!url) { Dashboard.alert('Enter a channel URL first.'); return; }
@@ -187,44 +173,22 @@ document.getElementById('ytAddChannelBtn').onclick = async () => {
     try {
         const cfg = await loadConfig();
 
-        // Check API key is configured
-        if (!cfg.YouTubeApiKey) {
-            Dashboard.alert('Configure your YouTube Data API v3 key first and click Save.');
+        // Use URL as temporary ID until first sync resolves the actual channel ID
+        const tempId = 'pending-' + Date.now();
+
+        // Check for duplicates by URL
+        if (cfg.Channels.some(c => c.Url === url)) {
+            Dashboard.alert('Channel already configured: ' + url);
             return;
         }
 
-        // Resolve channel via direct YouTube API call from the browser.
-        // We use the public YouTube Data API v3 endpoint.
-        const resp = await fetch('https://www.googleapis.com/youtube/v3/' +
-            'channels?part=snippet,contentDetails&key=' + encodeURIComponent(cfg.YouTubeApiKey) +
-            buildChannelQuery(url));
-        if (!resp.ok) {
-            const txt = await resp.text();
-            throw new Error('YouTube API error ' + resp.status + ': ' + txt.substring(0, 200));
-        }
-        const data = await resp.json();
-        if (!data.items || data.items.length === 0) {
-            throw new Error('Channel not found for URL: ' + url);
-        }
-        const ch = data.items[0];
-        const channelId = ch.id;
-        const channelName = ch.snippet?.title || channelId;
-        const uploadsPlaylistId = ch.contentDetails?.relatedPlaylists?.uploads || '';
-
-        // Check duplicates
-        if (cfg.Channels.some(c => c.Id === channelId)) {
-            Dashboard.alert('Channel already configured: ' + channelName);
-            return;
-        }
-
-        // Build channel config
         const polling = parseInt(document.getElementById('ytNewPolling').value, 10) || cfg.DefaultPollingIntervalHours || 6;
         const retention = document.getElementById('ytNewRetention').value || cfg.DefaultRetentionPolicy || 'permanent';
 
         cfg.Channels.push({
-            Id: channelId,
+            Id: tempId,
             Url: url,
-            Name: channelName,
+            Name: url.split('/').pop() || url,
             PollingIntervalHours: polling,
             RetentionPolicy: retention,
             AddedAt: new Date().toISOString(),
@@ -233,51 +197,19 @@ document.getElementById('ytAddChannelBtn').onclick = async () => {
             VideoCount: 0,
             Disabled: false
         });
-        cfg.Channels = cfg.Channels || [];
-        if (!cfg.Channels.find(c => c.Id === channelId)) {
-            // (already pushed above; this is defensive)
-        }
 
         await saveConfig(cfg);
 
         document.getElementById('ytNewChannelUrl').value = '';
-        Dashboard.alert('Channel added: ' + channelName + '\nSync will start in a few seconds.');
-        setTimeout(loadAndRender, 1000);
+        Dashboard.alert('Channel added. Sync will start in a few seconds.\n\nChannel name and ID will be resolved automatically via yt-dlp on first sync.');
+        setTimeout(loadAndRender, 3000);
+        setTimeout(loadAndRender, 15000);
     } catch (err) {
         Dashboard.alert('Add failed: ' + (err.message || err));
     } finally {
         btn.textContent = 'Add Channel'; btn.disabled = false;
     }
 };
-
-// Build YouTube Data API channels? request query based on URL type
-function buildChannelQuery(url) {
-    if (url.includes('/channel/')) {
-        const id = url.split('/channel/')[1].split('/')[0].split('?')[0];
-        return '&id=' + encodeURIComponent(id);
-    }
-    if (url.includes('/@')) {
-        const handle = url.split('/@')[1].split('/')[0].split('?')[0];
-        return '&forHandle=' + encodeURIComponent('@' + handle);
-    }
-    if (url.includes('/user/')) {
-        const user = url.split('/user/')[1].split('/')[0].split('?')[0];
-        return '&forUsername=' + encodeURIComponent(user);
-    }
-    if (url.includes('/c/')) {
-        // /c/CustomName requires search - not directly supported by channels.list
-        // Fallback: use the search endpoint with this name
-        const custom = url.split('/c/')[1].split('/')[0].split('?')[0];
-        return '&forHandle=' + encodeURIComponent('@' + custom);
-    }
-    if (url.includes('watch?v=')) {
-        // Resolve via videos endpoint
-        const v = new URL(url).searchParams.get('v');
-        return '&forHandle=' + encodeURIComponent('@'); // placeholder, will be handled specially below
-    }
-    // Assume raw channel ID
-    return '&id=' + encodeURIComponent(url);
-}
 
 document.getElementById('ytRefreshBtn').onclick = loadAndRender;
 
@@ -290,11 +222,21 @@ document.getElementById('ytSyncAllBtn').onclick = async () => {
         await saveConfig(cfg);
         Dashboard.alert('Sync scheduled for all channels.');
         setTimeout(loadAndRender, 5000);
+        setTimeout(loadAndRender, 20000);
     } catch (err) {
         Dashboard.alert('Failed: ' + err.message);
     } finally {
         btn.textContent = 'Sync All Channels Now'; btn.disabled = false;
     }
+};
+
+// Test yt-dlp button - we can't invoke yt-dlp directly from the browser
+// (sandbox), but we CAN check if the plugin's stream proxy is reachable.
+document.getElementById('ytTestYtdlpBtn').onclick = async () => {
+    const out = document.getElementById('ytTestYtdlpResult');
+    out.innerHTML = '<em>Cannot test yt-dlp directly from browser (sandboxed).</em><br/>' +
+        '<em>Check Jellyfin logs for "YouTube plugin: scheduled" or "yt-dlp" entries.</em><br/>' +
+        '<em>If a channel was added successfully, yt-dlp is working.</em>';
 };
 
 document.getElementById('ytTestResolverBtn').onclick = async () => {
@@ -304,23 +246,19 @@ document.getElementById('ytTestResolverBtn').onclick = async () => {
     const out = document.getElementById('ytTestResult');
     out.innerHTML = '<em>Testing...</em>';
 
-    // Test YoutubeExplode directly via the public proxy endpoint of the plugin
     try {
         const proxyPort = parseInt(document.getElementById('ytProxyPort').value, 10) || 8585;
         const proto = window.location.protocol;
         const host = window.location.hostname;
-
-        // Try the proxy URL - if it returns 302 to a YouTube URL, resolver works
         const proxyUrl = proto + '//' + host + ':' + proxyPort + '/youtube_plugin/stream/' + encodeURIComponent(videoId);
 
         const resp = await fetch(proxyUrl, { method: 'GET', redirect: 'manual' });
         if (resp.status === 0 || resp.type === 'opaqueredirect') {
-            // 302 redirected - we can't read the URL due to CORS, but the resolver worked
             out.innerHTML = '<span style="color:#6ee66e;">✓ Proxy responded with redirect (resolver works).</span><br/>' +
-                '<span style="opacity:0.7;">Test in Jellyfin by playing the video. URL: ' + escapeHtml(proxyUrl) + '</span>';
+                '<span style="opacity:0.7;">Test in Jellyfin by playing the video.</span>';
         } else if (resp.status === 502) {
             out.innerHTML = '<span style="color:#e66e6e;">✗ Proxy could not resolve the video (502).</span><br/>' +
-                '<span style="opacity:0.7;">Check Jellyfin logs for details. YoutubeExplode + yt-dlp both failed.</span>';
+                '<span style="opacity:0.7;">Check Jellyfin logs. YoutubeExplode + yt-dlp both failed.</span>';
         } else {
             out.innerHTML = '<span style="color:#aaa;">Got HTTP ' + resp.status + ' from proxy.</span>';
         }

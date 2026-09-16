@@ -4,15 +4,15 @@
     <TargetFramework>net9.0</TargetFramework>
     <RootNamespace>Jellyfin.Plugin.YouTube</RootNamespace>
     <AssemblyName>Jellyfin.Plugin.YouTube</AssemblyName>
-    <AssemblyVersion>0.0.0.2</AssemblyVersion>
-    <FileVersion>0.0.0.2</FileVersion>
-    <Version>0.0.0.2</Version>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <AssemblyVersion>0.0.0.3</AssemblyVersion>
+    <FileVersion>0.0.0.3</FileVersion>
+    <Version>0.0.0.3</Version>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <AnalysisLevel>latest</AnalysisLevel>
-    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <!-- CRITICAL: copy all NuGet dependencies to bin folder so they're bundled in the plugin zip -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,12 +20,18 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Jellyfin.Controller" Version="10.11.*" />
-    <PackageReference Include="Jellyfin.Model" Version="10.11.*" />
+    <!-- Jellyfin packages - DO NOT bundle (Jellyfin provides them at runtime) -->
+    <PackageReference Include="Jellyfin.Controller" Version="10.11.*">
+      <Private>false</Private>
+    </PackageReference>
+    <PackageReference Include="Jellyfin.Model" Version="10.11.*">
+      <Private>false</Private>
+    </PackageReference>
+
+    <!-- Microsoft.Data.Sqlite - bundled (small footprint, ensures version match) -->
     <PackageReference Include="Microsoft.Data.Sqlite" Version="9.*" />
-    <PackageReference Include="Google.Apis.YouTube.v3" Version="1.68.*" />
-    <PackageReference Include="Quartz" Version="3.13.*" />
-    <PackageReference Include="Polly" Version="8.*" />
+
+    <!-- YoutubeExplode - bundled (Jellyfin does NOT ship this) -->
     <PackageReference Include="YoutubeExplode" Version="6.*" />
   </ItemGroup>
 
