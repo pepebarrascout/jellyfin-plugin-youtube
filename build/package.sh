@@ -7,10 +7,17 @@ set -e
 PROJECT_DIR="/home/z/my-project/jellyfin-plugin-youtube"
 BIN_DIR="$PROJECT_DIR/Jellyfin.Plugin.YouTube/bin/Release/net9.0"
 DIST_DIR="$PROJECT_DIR/dist"
-VERSION="0.0.0.3"
+VERSION="0.0.0.4-alpha"
 
 # DLLs that Jellyfin already provides - DO NOT include in the zip
+# These include all transitive dependencies of Jellyfin.Controller/Model/Extensions:
+#   - Jellyfin.* (provided by Jellyfin itself)
+#   - MediaBrowser.* (provided by Jellyfin itself)
+#   - Microsoft.Extensions.* (provided by Jellyfin runtime)
+#   - Microsoft.EntityFrameworkCore.* (provided by Jellyfin.Database.Implementations)
+#   - BitFaster.Caching, Diacritics, ICU4N*, J2N, NEbml, Polly* (transitive deps of Jellyfin packages)
 EXCLUDE_DLLS=(
+    # Jellyfin-provided
     "Emby.Naming.dll"
     "Jellyfin.Data.dll"
     "Jellyfin.Database.Implementations.dll"
@@ -19,6 +26,7 @@ EXCLUDE_DLLS=(
     "MediaBrowser.Common.dll"
     "MediaBrowser.Controller.dll"
     "MediaBrowser.Model.dll"
+    # Microsoft.Extensions.* (provided by .NET runtime / Jellyfin)
     "Microsoft.Extensions.Caching.Abstractions.dll"
     "Microsoft.Extensions.Caching.Memory.dll"
     "Microsoft.Extensions.Configuration.Abstractions.dll"
@@ -29,9 +37,17 @@ EXCLUDE_DLLS=(
     "Microsoft.Extensions.Logging.dll"
     "Microsoft.Extensions.Options.dll"
     "Microsoft.Extensions.Primitives.dll"
+    # Microsoft.EntityFrameworkCore.* (transitive of Jellyfin.Database.Implementations)
     "Microsoft.EntityFrameworkCore.Abstractions.dll"
     "Microsoft.EntityFrameworkCore.Relational.dll"
     "Microsoft.EntityFrameworkCore.dll"
+    # Transitive deps of Jellyfin.Extensions / Jellyfin.Controller / Jellyfin.MediaEncoding
+    "BitFaster.Caching.dll"
+    "Diacritics.dll"
+    "ICU4N.dll"
+    "ICU4N.Transliterator.dll"
+    "J2N.dll"
+    "NEbml.Core.dll"
     "Polly.dll"
     "Polly.Core.dll"
 )

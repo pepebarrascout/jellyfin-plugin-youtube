@@ -42,7 +42,7 @@ public class WatchedTracker : IDisposable
     public void Start()
     {
         _sessionManager.PlaybackStopped += OnPlaybackStopped;
-        _logger.LogInformation("WatchedTracker: subscribed to PlaybackStopped events");
+        _logger.LogInformation("WatchedTracker: suscrito a eventos PlaybackStopped");
     }
 
     private void OnPlaybackStopped(object? sender, PlaybackStopEventArgs e)
@@ -57,17 +57,17 @@ public class WatchedTracker : IDisposable
             if (!match.Success) return;
 
             var videoId = match.Groups[1].Value;
-            var userId = e.Users?.FirstOrDefault()?.Id.ToString() ?? "unknown";
+            var userId = e.Users?.FirstOrDefault()?.Id.ToString() ?? "desconocido";
             var positionSec = (long)((e.PlaybackPositionTicks ?? 0) / TimeSpan.TicksPerSecond);
 
             _db.MarkWatched(videoId, userId, positionSec);
             _logger.LogInformation(
-                "WatchedTracker: marked {VideoId} watched by user {User} at position {Pos}s",
+                "WatchedTracker: marcado {VideoId} como visto por usuario {User} en posición {Pos}s",
                 videoId, userId, positionSec);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "WatchedTracker: error handling PlaybackStopped event");
+            _logger.LogError(ex, "WatchedTracker: error manejando evento PlaybackStopped");
         }
     }
 

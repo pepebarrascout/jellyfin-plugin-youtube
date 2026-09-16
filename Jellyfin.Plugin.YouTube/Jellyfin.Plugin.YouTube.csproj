@@ -4,14 +4,14 @@
     <TargetFramework>net9.0</TargetFramework>
     <RootNamespace>Jellyfin.Plugin.YouTube</RootNamespace>
     <AssemblyName>Jellyfin.Plugin.YouTube</AssemblyName>
-    <AssemblyVersion>0.0.0.3</AssemblyVersion>
-    <FileVersion>0.0.0.3</FileVersion>
-    <Version>0.0.0.3</Version>
+    <AssemblyVersion>0.0.0.4</AssemblyVersion>
+    <FileVersion>0.0.0.4</FileVersion>
+    <Version>0.0.0.4</Version>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <!-- CRITICAL: copy all NuGet dependencies to bin folder so they're bundled in the plugin zip -->
+    <!-- Copiar dependencias NuGet al bin para incluirlas en el zip del plugin -->
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
@@ -20,7 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Jellyfin packages - DO NOT bundle (Jellyfin provides them at runtime) -->
+    <!-- Paquetes de Jellyfin - NO incluir en el zip (Jellyfin los provee) -->
     <PackageReference Include="Jellyfin.Controller" Version="10.11.*">
       <Private>false</Private>
     </PackageReference>
@@ -28,11 +28,8 @@
       <Private>false</Private>
     </PackageReference>
 
-    <!-- Microsoft.Data.Sqlite - bundled (small footprint, ensures version match) -->
+    <!-- SQLite para base de datos propia (necesario embeber) -->
     <PackageReference Include="Microsoft.Data.Sqlite" Version="9.*" />
-
-    <!-- YoutubeExplode - bundled (Jellyfin does NOT ship this) -->
-    <PackageReference Include="YoutubeExplode" Version="6.*" />
   </ItemGroup>
 
 </Project>

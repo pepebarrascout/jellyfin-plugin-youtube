@@ -55,7 +55,7 @@ public class YtDlpChannelClient
 
             if (proc.ExitCode != 0)
             {
-                _logger.LogWarning("yt-dlp resolve channel failed: {Err}", stderr.Trim());
+                _logger.LogWarning("yt-dlp falló resolviendo canal: {Err}", stderr.Trim());
                 return null;
             }
 
@@ -82,7 +82,7 @@ public class YtDlpChannelClient
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "yt-dlp invocation failed resolving channel {Url}", url);
+            _logger.LogError(ex, "falló la invocación de yt-dlp al resolver el canal {Url}", url);
             return null;
         }
     }
@@ -121,7 +121,7 @@ public class YtDlpChannelClient
 
             if (proc.ExitCode != 0)
             {
-                _logger.LogWarning("yt-dlp list videos failed: {Err}", stderr.Trim());
+                _logger.LogWarning("yt-dlp falló listando videos: {Err}", stderr.Trim());
                 return result;
             }
 
@@ -165,7 +165,7 @@ public class YtDlpChannelClient
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "yt-dlp invocation failed listing videos for {Url}", uploadsUrl);
+            _logger.LogError(ex, "falló la invocación de yt-dlp al listar videos de {Url}", uploadsUrl);
         }
         return result;
     }
@@ -194,7 +194,7 @@ public class YtDlpChannelClient
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "yt-dlp version check failed");
+            _logger.LogWarning(ex, "falló la verificación de versión de yt-dlp");
             return null;
         }
     }

@@ -8,48 +8,54 @@
             </div>
 
             <p style="color:#888;font-size:0.9rem;margin-bottom:20px;">
-                Stream YouTube videos as Jellyfin Series without downloading them.
-                No YouTube Data API key required — uses yt-dlp for all metadata.
+                Reproduce videos de YouTube como Series en Jellyfin sin descargarlos al disco.
+                No requiere API key de YouTube — usa <code style="background:#333;padding:1px 4px;border-radius:2px;">yt-dlp</code> para todos los metadatos.
             </p>
 
-            <!-- Status banner -->
+            <!-- Estado del plugin -->
             <div id="ytStatusBanner" style="padding:12px 16px;border-radius:8px;margin-bottom:20px;font-size:0.9rem;background:#2a2a2a;border:1px solid #444;color:#ddd;">
-                Loading status...
+                Cargando estado...
             </div>
 
-            <!-- Global settings -->
+            <!-- Notificaciones para el usuario -->
+            <div id="ytToast" style="position:fixed;top:20px;right:20px;z-index:9999;min-width:300px;max-width:400px;padding:14px 18px;border-radius:8px;background:#2a2a2a;color:#ddd;border:1px solid #555;box-shadow:0 4px 12px rgba(0,0,0,0.3);display:none;font-size:0.9rem;">
+                <span id="ytToastMsg"></span>
+            </div>
+
+            <!-- Configuración global -->
             <div class="inputContainer" style="margin-bottom:24px;">
-                <h3 style="margin-bottom:12px;">Global Settings</h3>
+                <h3 style="margin-bottom:12px;">Configuración general</h3>
 
                 <div class="inputContainer">
-                    <label for="ytYtDlpPath">yt-dlp binary path (REQUIRED)</label>
+                    <label for="ytYtDlpPath">Ruta del binario de yt-dlp (REQUERIDO)</label>
                     <input type="text" id="ytYtDlpPath" is="emby-input" placeholder="yt-dlp" />
                     <div class="fieldDescription">
-                        Path to the yt-dlp binary. Used for channel metadata AND stream URL resolution fallback.<br/>
-                        Inside Docker: mount yt-dlp from host, e.g.:
+                        Ruta al binario de yt-dlp. Se usa tanto para metadatos de canal como para resolver URLs de stream.<br/>
+                        Dentro de Docker monta yt-dlp del host, por ejemplo:
                         <code style="background:#333;padding:1px 4px;border-radius:2px;">
                         -v /usr/bin/yt-dlp:/usr/local/bin/yt-dlp:ro</code><br/>
-                        Then set this to <code style="background:#333;padding:1px 4px;border-radius:2px;">/usr/local/bin/yt-dlp</code>
+                        Y luego configura esta ruta como
+                        <code style="background:#333;padding:1px 4px;border-radius:2px;">/usr/local/bin/yt-dlp</code>
                     </div>
                 </div>
 
                 <div class="inputContainer">
-                    <label for="ytStrmRoot">.strm root directory</label>
+                    <label for="ytStrmRoot">Directorio raíz de archivos .strm</label>
                     <input type="text" id="ytStrmRoot" is="emby-input" />
                     <div class="fieldDescription">
-                        Where .strm files are written. Add this path as a "Shows" library in Jellyfin.
-                        Default: /config/youtube_plugin (inside Docker container)
+                        Donde se escriben los archivos .strm. Agrega esta ruta como biblioteca tipo "Shows" en Jellyfin.
+                        Default: /config/youtube_plugin (dentro del contenedor Docker)
                     </div>
                 </div>
 
                 <div class="inputContainer">
-                    <label for="ytProxyPort">Stream proxy port</label>
+                    <label for="ytProxyPort">Puerto del proxy de streaming</label>
                     <input type="number" id="ytProxyPort" is="emby-input" min="1024" max="65535" />
-                    <div class="fieldDescription">Must not conflict with Jellyfin port (8096). Default 8585.</div>
+                    <div class="fieldDescription">No debe coincidir con el puerto de Jellyfin (8096). Default: 8585.</div>
                 </div>
 
                 <div class="inputContainer">
-                    <label for="ytMaxQuality">Max stream quality (height)</label>
+                    <label for="ytMaxQuality">Calidad máxima del stream (altura en píxeles)</label>
                     <select id="ytMaxQuality" is="emby-select">
                         <option value="144">144p</option>
                         <option value="240">240p</option>
@@ -65,94 +71,82 @@
                 <div class="checkboxContainer checkboxContainer-withDescription">
                     <label>
                         <input type="checkbox" id="ytUseProxy" is="emby-checkbox" checked />
-                        <span>Use stream proxy (recommended)</span>
+                        <span>Usar proxy de streaming (recomendado)</span>
                     </label>
                     <div class="fieldDescription">
-                        .strm files point to a local proxy that resolves YouTube stream URLs on demand.
-                        Disable only if you know what you're doing.
-                    </div>
-                </div>
-
-                <div class="checkboxContainer checkboxContainer-withDescription">
-                    <label>
-                        <input type="checkbox" id="ytPreferExplode" is="emby-checkbox" checked />
-                        <span>Prefer YoutubeExplode for stream URL resolution</span>
-                    </label>
-                    <div class="fieldDescription">
-                        Uses an in-process .NET library (no subprocess overhead). Falls back to
-                        yt-dlp automatically if it fails (age-restricted, members-only, etc.).
-                        Channel metadata always uses yt-dlp regardless.
+                        Los archivos .strm apuntan a un proxy local que resuelve las URLs de YouTube bajo demanda.
+                        Desactiva solo si sabes lo que estás haciendo.
                     </div>
                 </div>
 
                 <button id="ytSaveBtn" type="button" is="emby-button" class="raised button-submit">
-                    <span>Save Settings</span>
+                    <span>Guardar configuración</span>
                 </button>
             </div>
 
-            <!-- Add channel -->
+            <!-- Agregar canal -->
             <div class="inputContainer" style="margin-bottom:24px;">
-                <h3 style="margin-bottom:12px;">Add Channel</h3>
+                <h3 style="margin-bottom:12px;">Agregar canal</h3>
                 <div class="inputContainer">
-                    <label for="ytNewChannelUrl">Channel URL</label>
+                    <label for="ytNewChannelUrl">URL del canal</label>
                     <input type="text" id="ytNewChannelUrl" is="emby-input"
-                           placeholder="https://www.youtube.com/@handle or /channel/UCxxxx or /watch?v=..." />
+                           placeholder="https://www.youtube.com/@handle o /channel/UCxxxx o /watch?v=..." />
                 </div>
                 <div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;">
                     <div class="inputContainer" style="flex:0 0 120px;">
-                        <label for="ytNewPolling">Polling (hours)</label>
+                        <label for="ytNewPolling">Polling (horas)</label>
                         <input type="number" id="ytNewPolling" is="emby-input" value="6" min="1" max="168" />
                     </div>
                     <div class="inputContainer" style="flex:0 0 220px;">
-                        <label for="ytNewRetention">Retention</label>
+                        <label for="ytNewRetention">Retención</label>
                         <select id="ytNewRetention" is="emby-select">
-                            <option value="permanent">Keep permanently</option>
-                            <option value="delete_after_2_days">Delete watched after 2 days</option>
+                            <option value="permanent">Mantener permanentemente</option>
+                            <option value="delete_after_2_days">Eliminar vistos después de 2 días</option>
                         </select>
                     </div>
                     <button id="ytAddChannelBtn" type="button" is="emby-button" class="raised button-submit">
-                        <span>Add Channel</span>
+                        <span>Agregar canal</span>
                     </button>
                 </div>
                 <p style="color:#888;font-size:0.8rem;margin-top:8px;">
-                    Adding a channel triggers an immediate sync in the background via yt-dlp.
-                    The .strm files will appear within ~30 seconds at most.
+                    Al agregar un canal se inicia la sincronización en segundo plano con yt-dlp.
+                    Los archivos .strm aparecen en ~30 segundos.
                 </p>
             </div>
 
-            <!-- Channel list -->
+            <!-- Lista de canales -->
             <div class="inputContainer">
-                <h3 style="margin-bottom:12px;">Configured Channels</h3>
+                <h3 style="margin-bottom:12px;">Canales configurados</h3>
                 <div id="ytChannelList" style="background:#222;border-radius:8px;padding:8px 12px;">
-                    <div style="opacity:0.7;text-align:center;padding:20px;">Loading channels...</div>
+                    <div style="opacity:0.7;text-align:center;padding:20px;">Cargando canales...</div>
                 </div>
             </div>
 
-            <!-- Diagnostics -->
+            <!-- Diagnósticos -->
             <div class="inputContainer" style="margin-top:24px;">
-                <h3 style="margin-bottom:12px;">Diagnostics</h3>
+                <h3 style="margin-bottom:12px;">Diagnósticos</h3>
                 <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
                     <button id="ytRefreshBtn" type="button" is="emby-button" class="raised">
-                        <span>Refresh</span>
+                        <span>Refrescar</span>
                     </button>
                     <button id="ytTestYtdlpBtn" type="button" is="emby-button" class="raised">
-                        <span>Test yt-dlp</span>
+                        <span>Probar yt-dlp</span>
                     </button>
                     <button id="ytSyncAllBtn" type="button" is="emby-button" class="raised">
-                        <span>Sync All Channels Now</span>
+                        <span>Sincronizar todos los canales</span>
                     </button>
                 </div>
                 <div id="ytTestYtdlpResult" style="margin-top:8px;font-family:monospace;font-size:0.85rem;color:#aaa;"></div>
 
                 <div class="inputContainer" style="margin-top:16px;">
-                    <label for="ytTestVideoId">Test stream resolver (video ID)</label>
+                    <label for="ytTestVideoId">Probar resolución de stream (ID de video)</label>
                     <div style="display:flex;gap:8px;align-items:end;">
                         <input type="text" id="ytTestVideoId" is="emby-input" placeholder="dQw4w9WgXcQ" style="flex:1;" />
                         <button id="ytTestResolverBtn" type="button" is="emby-button" class="raised" style="flex:0 0 auto;">
-                            <span>Test</span>
+                            <span>Probar</span>
                         </button>
                     </div>
-                    <div class="fieldDescription">Tests the stream proxy (YoutubeExplode + yt-dlp fallback).</div>
+                    <div class="fieldDescription">Prueba el proxy de streaming (resolución de URL vía yt-dlp).</div>
                 </div>
                 <div id="ytTestResult" style="margin-top:10px;font-family:monospace;font-size:0.85rem;color:#aaa;"></div>
             </div>

@@ -56,20 +56,13 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool UseStreamProxy { get; set; } = true;
 
     /// <summary>
-    /// Cache duration (hours) for resolved stream URLs. YouTube URLs expire ~6h.
+    /// Duración (horas) del cache de URLs de stream resueltas. Las URLs de YouTube expiran ~6h.
     /// </summary>
     public int StreamUrlCacheHours { get; set; } = 5;
 
     /// <summary>
-    /// Prefer YoutubeExplode (no external binary) over yt-dlp for stream URL resolution.
-    /// If false, always use yt-dlp for stream URL resolution.
-    /// In both cases, yt-dlp is the source of channel/video metadata.
-    /// </summary>
-    public bool PreferYoutubeExplode { get; set; } = true;
-
-    /// <summary>
-    /// Channel list managed from the configuration page. Each channel has its
-    /// own polling interval and retention policy.
+    /// Lista de canales gestionados desde la página de configuración. Cada canal
+    /// tiene su propio intervalo de polling y política de retención.
     /// </summary>
     public List<ChannelConfig> Channels { get; set; } = new();
 }

@@ -63,51 +63,64 @@ public class PluginHostedService : IHostedService, IDisposable
     {
         try
         {
-            _logger.LogInformation("YouTube plugin: starting hosted service...");
+            _logger.LogInformation("Plugin YouTube: iniciando servicio... ");
 
             _config = Plugin.Instance?.Configuration;
             if (_config == null)
             {
-                _logger.LogError("YouTube plugin: Plugin.Instance is null - aborting init");
+                _logger.LogError("Plugin YouTube: Plugin.Instance es null - se cancela la inicialización");
                 return Task.CompletedTask;
             }
 
-            // Ensure strm root directory exists
+            // Verificar que yt-dlp esté disponible
+            var ytDlpClient = new Api.YtDlpChannelClient(_config.YtDlpPath, _logger);
+            var version = ytDlpClient.GetVersion();
+            if (version == null)
+            {
+                _logger.LogError("Plugin YouTube: no se encuentra yt-dlp en '{Path}'. " +
+                    "El plugin no funcionará hasta que lo configures correctamente.", _config.YtDlpPath);
+            }
+            else
+            {
+                _logger.LogInformation("Plugin YouTube: yt-dlp detectado, versión {Version}", version);
+            }
+
+            // Asegurar que existe el directorio raíz de .strm
             if (!System.IO.Directory.Exists(_config.StrmRootPath))
             {
                 System.IO.Directory.CreateDirectory(_config.StrmRootPath);
-                _logger.LogInformation("YouTube plugin: created strm root {Path}", _config.StrmRootPath);
+                _logger.LogInformation("Plugin YouTube: directorio raíz creado {Path}", _config.StrmRootPath);
             }
 
-            // Initialize SQLite
+            // Inicializar SQLite
             var dbPath = System.IO.Path.Combine(_config.StrmRootPath, "youtube_plugin.sqlite");
             _db = new SQLiteStore(dbPath, _logger);
             _db.Initialize();
-            _logger.LogInformation("YouTube plugin: SQLite initialized at {Path}", dbPath);
+            _logger.LogInformation("Plugin YouTube: SQLite inicializado en {Path}", dbPath);
 
-            // Initialize watched tracker (subscribed to ISessionManager)
+            // Inicializar watched tracker (suscripto a ISessionManager)
             _watchedTracker = new WatchedTracker(_db, _sessionManager, _logger);
             _watchedTracker.Start();
 
-            // Initialize stream proxy
+            // Inicializar stream proxy
             if (_config.UseStreamProxy)
             {
                 _streamProxy = new StreamProxy(_config, _db, _logger);
                 _ = _streamProxy.StartAsync();
-                _logger.LogInformation("YouTube plugin: stream proxy started on port {Port}", _config.StreamProxyPort);
+                _logger.LogInformation("Plugin YouTube: proxy de streaming iniciado en el puerto {Port}", _config.StreamProxyPort);
             }
 
-            // Initialize channel sync service (scheduler)
+            // Inicializar servicio de sincronización (scheduler)
             _syncService = new ChannelSyncService(_config, _db, _logger);
             PluginServiceHost.SyncService = _syncService;
             PluginServiceHost.Database = _db;
             _ = _syncService.StartAsync();
 
-            _logger.LogInformation("YouTube plugin: hosted service started");
+            _logger.LogInformation("Plugin YouTube: servicio iniciado correctamente");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "YouTube plugin: initialization failed");
+            _logger.LogError(ex, "Plugin YouTube: falló la inicialización");
         }
 
         return Task.CompletedTask;
@@ -115,7 +128,7 @@ public class PluginHostedService : IHostedService, IDisposable
 
     public Task StopAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("YouTube plugin: stopping hosted service...");
+        _logger.LogInformation("Plugin YouTube: deteniendo servicio...");
         try
         {
             _syncService?.Dispose();
@@ -125,7 +138,7 @@ public class PluginHostedService : IHostedService, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "YouTube plugin: error during stop");
+            _logger.LogWarning(ex, "Plugin YouTube: error al detener");
         }
         return Task.CompletedTask;
     }

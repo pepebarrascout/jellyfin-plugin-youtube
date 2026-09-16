@@ -30,17 +30,23 @@ public class SQLiteStore : IDisposable
         _connection.Open();
 
         using var pragmaCmd = _connection.CreateCommand();
-        pragmaCmd.CommandText = "PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA user_version;";
+        // Microsoft.Data.Sqlite devuelve PRAGMA user_version como object (a veces string, a veces long).
+        // Hay que usar Convert.ToInt64 para no romper con ningún tipo de retorno.
+        pragmaCmd.CommandText = "PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;";
         pragmaCmd.ExecuteNonQuery();
-        var userVersion = (long)(pragmaCmd.ExecuteScalar() ?? 0);
+
+        using var versionCmd = _connection.CreateCommand();
+        versionCmd.CommandText = "PRAGMA user_version;";
+        var versionRaw = versionCmd.ExecuteScalar();
+        long userVersion = Convert.ToInt64(versionRaw, System.Globalization.CultureInfo.InvariantCulture);
 
         if (userVersion < 1)
         {
             CreateSchemaV1();
             using var v = _connection.CreateCommand();
-            v.CommandText = $"PRAGMA user_version = {CurrentSchemaVersion};";
+            v.CommandText = "PRAGMA user_version = 1;";
             v.ExecuteNonQuery();
-            _logger.LogInformation("YouTube plugin: SQLite schema v1 created");
+            _logger.LogInformation("YouTube plugin: SQLite - esquema v1 creado");
         }
     }
 

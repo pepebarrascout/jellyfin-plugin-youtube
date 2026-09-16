@@ -52,7 +52,7 @@ public class ChannelSyncService : IDisposable
         {
             ScheduleChannel(ch);
         }
-        _logger.LogInformation("YouTube plugin: scheduled {Count} channel sync jobs", channels.Count);
+        _logger.LogInformation("Plugin YouTube: se programaron {Count} trabajos de sincronización", channels.Count);
 
         return Task.CompletedTask;
     }
@@ -109,7 +109,7 @@ public class ChannelSyncService : IDisposable
             ScheduleChannel(ch);
         }
 
-        _logger.LogInformation("YouTube plugin: reloaded {Count} channel schedules", channels.Count);
+        _logger.LogInformation("Plugin YouTube: recargadas {Count} programaciones de canales", channels.Count);
         return Task.CompletedTask;
     }
 
@@ -119,7 +119,7 @@ public class ChannelSyncService : IDisposable
         foreach (var ch in channels.Where(c => !c.Disabled))
         {
             try { await SyncChannelAsync(ch).ConfigureAwait(false); }
-            catch (Exception ex) { _logger.LogError(ex, "Sync failed for channel {Id}", ch.Id); }
+            catch (Exception ex) { _logger.LogError(ex, "Falló la sincronización del canal {Id}", ch.Id); }
         }
     }
 
@@ -137,13 +137,13 @@ public class ChannelSyncService : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "SafeSyncChannelAsync failed for {Id}", channelId);
+            _logger.LogError(ex, "SafeSyncChannelAsync falló para {Id}", channelId);
         }
     }
 
     public async Task SyncChannelAsync(ChannelConfig channel)
     {
-        _logger.LogInformation("YouTube plugin: syncing channel {Name} ({Id})", channel.Name, channel.Id);
+        _logger.LogInformation("Plugin YouTube: sincronizando canal {Name} ({Id})", channel.Name, channel.Id);
         var strmWriter = new StrmWriter(_config.StrmRootPath, _config.UseStreamProxy, _config.StreamProxyPort, _logger);
 
         try
@@ -158,15 +158,15 @@ public class ChannelSyncService : IDisposable
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Resolve channel failed for {Url}", channel.Url);
+                _logger.LogError(ex, "Falló la resolución del canal {Url}", channel.Url);
                 channel.LastSyncAt = DateTime.UtcNow;
-                channel.LastSyncStatus = $"error: resolve failed: {ex.Message}";
+                channel.LastSyncStatus = $"error: falló la resolución: {ex.Message}";
                 PersistChannel(channel);
                 return;
             }
             if (info == null)
             {
-                channel.LastSyncStatus = "error: channel not found (check yt-dlp path)";
+                channel.LastSyncStatus = "error: canal no encontrado (verifica la ruta de yt-dlp)";
                 channel.LastSyncAt = DateTime.UtcNow;
                 PersistChannel(channel);
                 return;
@@ -218,11 +218,11 @@ public class ChannelSyncService : IDisposable
 
             ApplyRetention(channel, strmWriter);
 
-            _logger.LogInformation("YouTube plugin: sync complete for {Name}: {Count} videos", channel.Name, added);
+            _logger.LogInformation("Plugin YouTube: sincronización completa de {Name}: {Count} videos", channel.Name, added);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "YouTube plugin: sync failed for {Name}", channel.Name);
+            _logger.LogError(ex, "Plugin YouTube: falló la sincronización de {Name}", channel.Name);
             channel.LastSyncAt = DateTime.UtcNow;
             channel.LastSyncStatus = $"error: {ex.Message}";
             PersistChannel(channel);
@@ -263,7 +263,7 @@ public class ChannelSyncService : IDisposable
                 _db.DeleteVideo(vid);
             }
             if (oldVideoIds.Count > 0)
-                _logger.LogInformation("YouTube plugin: retention deleted {Count} videos from {Name}", oldVideoIds.Count, channel.Name);
+                _logger.LogInformation("Plugin YouTube: la retención eliminó {Count} videos de {Name}", oldVideoIds.Count, channel.Name);
         }
     }
 

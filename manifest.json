@@ -2,15 +2,23 @@
   {
     "guid": "a8c3b2e1-7f4d-4e6a-9b1c-2d5e8f0a1b3c",
     "name": "Jellyfin YouTube Plugin",
-    "description": "Stream YouTube videos as Jellyfin Series without downloading them. Uses .strm files + local stream proxy + yt-dlp + YoutubeExplode.",
-    "overview": "Add YouTube channels and stream their videos directly as Series in Jellyfin. No download to disk. No YouTube Data API key required - uses yt-dlp for all metadata. SQLite database isolated from Jellyfin's main DB. Configurable polling per channel and retention policies.",
+    "description": "Reproduce videos de YouTube como Series en Jellyfin sin descargarlos. Usa archivos .strm + proxy local + yt-dlp.",
+    "overview": "Agrega canales de YouTube y reproduce sus videos directamente como Series en Jellyfin. Sin descarga al disco. No requiere API key de YouTube - usa yt-dlp para todos los metadatos. Base de datos SQLite aislada de la BD principal de Jellyfin. Polling configurable por canal y políticas de retención.",
     "owner": "pepebarrascout",
     "category": "Metadata",
     "imageUrl": "https://raw.githubusercontent.com/pepebarrascout/jellyfin-plugin-youtube/main/logo.png",
     "versions": [
       {
+        "version": "0.0.0.4-alpha",
+        "changelog": "- Eliminada dependencia de YoutubeExplode (plugin reducido de 8.3MB a ~1MB)\n- Fix: InvalidCastException en SQLiteStore.Initialize (PRAGMA user_version devuelve string)\n- Todos los textos, logs y mensajes traducidos al español\n- Feedback visual completo en botones (loading + toasts de éxito/error)\n- Verificación de yt-dlp al iniciar el plugin (log informativo)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/pepebarrascout/jellyfin-plugin-youtube/releases/download/v0.0.0.4-alpha/jellyfin-plugin-youtube_0.0.0.4-alpha.zip",
+        "checksum": "fe5e2c218bd2a3d47785e2a488fb1934",
+        "timestamp": "2026-09-15T22:30:00Z"
+      },
+      {
         "version": "0.0.0.3",
-        "changelog": "- FIX: plugin now loads correctly - NuGet dependencies (YoutubeExplode, Microsoft.Data.Sqlite, SQLitePCLRaw) bundled in the zip\n- Removed YouTube Data API v3 dependency - uses yt-dlp --flat-playlist for channel metadata (no API key, no quota)\n- Removed Quartz - uses System.Threading.Timer (built-in .NET)\n- Removed Polly - simple try/catch\n- Channel list stored in PluginConfiguration.Channels (UI-managed)\n- WatchedTracker subscribed to ISessionManager.PlaybackStopped\n- YoutubeExplode primary stream resolver + yt-dlp fallback",
+        "changelog": "- FIX: plugin now loads correctly - NuGet dependencies bundled in the zip\n- Removed YouTube Data API v3 dependency - uses yt-dlp --flat-playlist for channel metadata\n- Removed Quartz - uses System.Threading.Timer\n- Removed Polly - simple try/catch",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/pepebarrascout/jellyfin-plugin-youtube/releases/download/v0.0.0.3/jellyfin-plugin-youtube_0.0.0.3.zip",
         "checksum": "e9ef51d1eebb2ec7296f30eb774e2dbc",
@@ -18,7 +26,7 @@
       },
       {
         "version": "0.0.0.2",
-        "changelog": "- Configuration page now functional via Jellyfin's built-in plugin config endpoints\n- YoutubeExplode as primary resolver (no external binary needed)\n- yt-dlp fallback when YoutubeExplode fails (e.g. age-restricted content)\n- WatchedTracker subscribed to ISessionManager.PlaybackStopped events\n- Channels stored in PluginConfiguration (UI-managed)\n- Test resolver button in diagnostics\n- Max quality selector (144p-4K)\n- Auto-reload scheduler when channels added/removed via UI",
+        "changelog": "- Configuration page functional via Jellyfin built-in endpoints\n- YoutubeExplode as primary resolver\n- yt-dlp fallback\n- WatchedTracker subscribed to PlaybackStopped",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/pepebarrascout/jellyfin-plugin-youtube/releases/download/v0.0.0.2/jellyfin-plugin-youtube_0.0.0.2.zip",
         "checksum": "134bc91b4f120a3bc92ea9608e2fb070",
@@ -26,7 +34,7 @@
       },
       {
         "version": "0.0.0.1",
-        "changelog": "- Initial scaffold: plugin entry point, configuration page, SQLite store, channel sync skeleton, .strm generator, stream proxy skeleton, watched tracker",
+        "changelog": "- Initial scaffold",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/pepebarrascout/jellyfin-plugin-youtube/releases/download/v0.0.0.1/jellyfin-plugin-youtube_0.0.0.1.zip",
         "checksum": "fcc3b114251c1d0cd30e5f7eecc6e51d",
